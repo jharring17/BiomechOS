@@ -273,10 +273,36 @@ def draw_timeseries(point, point_name=''):
     fig_y.show()
     fig_z.show()
 
+def detect_filetype(filename):
+    loaded = sio.loadmat(filename)
+    if (loaded):
+        loaded = loaded["Data"]
+        if (np.shape(loaded) == (1,1)):
+            loaded = load_from_mat(filename, {})
+            key = list(loaded.keys())[0]
+            loaded = loaded[key]
+    shape = np.shape(loaded)
+    filetype = ""
+    if (len(shape) == 3 and shape[0] == 3 and shape[1] == 3):
+        filetype = "axes"
+    elif (len(shape) == 2 and shape[1] == 2):
+        filetype = "linesegment"
+    elif (len(shape) == 2 and shape[1] == 3):
+        filetype = "point"
+    else: #Need clarification on vector type to create accurate conditions
+        filetype = "vector"
+
+    return filetype
+        
+    
 
 
-
-
+folder_path = sys.argv[1]
+print(detect_filetype(f'{folder_path}/Mitchell_AnatAx_Nairobi21.mat')) #axes
+print(detect_filetype(f'{folder_path}/Mitchell_TBCMVeloc_Nairobi21.mat')) #points
+print(detect_filetype(f'{folder_path}/Mitchell_TBCM_Nairobi21.mat'))
+print(detect_filetype(f'{folder_path}/Mitchell_SegCOM_Nairobi21.mat'))
+print(detect_filetype(f'{folder_path}/Mitchell_MocapData_Nairobi21.mat')) #points
 
 points, COMs, axes = read_Mitchell_data()
 
