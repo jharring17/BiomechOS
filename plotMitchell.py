@@ -201,11 +201,14 @@ def base_plot(dfs, labels, frame):
                             hovertext= labels
                             ),
         ],
-        layout=go.Layout(width=1600, height=800, #TODO dynamically set plot size
+        layout=go.Layout(width=800, height=900, #TODO dynamically set plot size (800 and 900)
                         scene = scene_scaling,
                         title="Sample", #TODO change plot title
                         #slider= #TODO implement the frame slider
                         updatemenus=[dict(type="buttons",
+                                            x=0.6,
+                                            y=0,
+                                            direction="right",
                                             buttons=[dict(label="Play",
                                                         method="animate",
                                                         args=[None, {"fromcurrent": True, "frame": {"duration": 50, 'redraw': True}, "transition": {"duration": 0}}]), #TODO verify this controls the speed https://plotly.com/javascript/animations/
@@ -215,7 +218,14 @@ def base_plot(dfs, labels, frame):
                                                     dict(label="Restart",
                                                         method="animate",
                                                         args=[None, {"frame": {"duration": 50, 'redraw': True}, "mode": 'immediate',}]),
-                                                    ])]
+                                                    ])],
+                        legend=dict(
+                            x=0.5,
+                            y=1,
+                            orientation='h',
+                            xanchor='center',  # Center the legend horizontally
+                            yanchor='bottom',
+                        )
         ),
         frames=[go.Frame(
                 data= [go.Scatter3d(
@@ -284,6 +294,18 @@ def draw_timeseries(point, point_name=''):
     fig_y = go.Figure(data=go.Scatter(x=time, y=y, mode='markers+lines'), layout=go.Layout(title=f'Point {point_name} Y over time', xaxis_title='Frame', yaxis_title='Y'))
     fig_z = go.Figure(data=go.Scatter(x=time, y=z, mode='markers+lines'), layout=go.Layout(title=f'Point {point_name} Z over time', xaxis_title='Frame', yaxis_title='Z'))
 
+    fig_x.update_layout(
+        width=825,  
+        height=300,
+    )
+    fig_y.update_layout(
+        width=825,  
+        height=300,  
+    )
+    fig_z.update_layout(
+        width=825,  
+        height=300,
+    )
     # fig_x.show()
     # fig_y.show()
     # fig_z.show()
@@ -322,64 +344,85 @@ def dash():
     global frameLength
 
     app.layout = html.Div([
-        html.H4('Interactive Graph Selection for Time Series'),
-        html.P("Select point:"),
-        dcc.Dropdown(
-            id="dropdown",
-            options=list(points.keys()),
-            value='LHM2',
-            clearable=False,
-        ),
-        dcc.Graph(id="graph1"),
-        dcc.Graph(id="graph2"),
-        dcc.Graph(id="graph3"),
-        dcc.Graph(id="graph4"),
-        html.H4('Input for 3d Graph:'),
-        html.P("Framerate Input:"),
-        dcc.Input(
-            id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True
-        ),
-        html.P('Current Frame:'),
-        dcc.Input(
-            id="3dInput", type="number", placeholder="", value=1000, debounce=True
-        ),
-        html.P('Frame Slider'),
-        html.Div([
-            dcc.Slider(
-                0, frameLength, 1,
-                value=0,
-                id='3dInputSlider'
-            )], id="sliderDiv")
-    ])
+        html.Div([ # Div to hold the dropdown stuff and the time series graphs
+            html.Div([ #Div for the drop Down stuff
+                html.H4('Interactive Graph Selection for Time Series', style={"margin": '0px', 'margin-top': '5px'}),
+                html.P("Select point:", style={"margin-top": '3px', "margin-bottom": "5px"}),
+                dcc.Dropdown(
+                    id="dropdown",
+                    options=list(points.keys()),
+                    value='LHM2',
+                    clearable=False,
+                )
+            ]),
+            html.Div([ # Time Series Graphs Div
+                dcc.Graph(id="graph1"),
+                dcc.Graph(id="graph2"),
+                dcc.Graph(id="graph3")
+            ],
+            style={ # Styling for the time Series Graphs Div
+                'display': 'flex',
+                'flex-direction': 'column'
+            })
+        ],
+        style={ # Styling for the Div that holds the Dropdown menu and the Times Series Graph
+            'display': 'flex',
+            'flex-direction': 'column',
+            'width': '50%',
+        }),
+        html.Div([  # Div for the Actual 3D Visualization
+            dcc.Loading(
+                id="loading-graph4",
+                type="default",
+                children=[
+                    dcc.Input(id='dummy-input', value='dummy-value', style={'display': 'none'}),
+                    dcc.Graph(id="graph4", config={'responsive': True}),
+                    html.H4('Input for 3d Graph:'),
+                    html.P("Framerate Input:"),
+                    dcc.Input(
+                        id="3dFramerateInput", type="number", placeholder="", value=8, debounce=True
+                    ),
+                    html.P('Current Frame:'),
+                    dcc.Input(
+                        id="3dInput", type="number", placeholder="", value=1000, debounce=True
+                    ),
+                    html.P('Frame Slider'),
+                    html.Div([
+                        dcc.Slider(
+                            0, frameLength, 1,
+                            value=0,
+                            id='3dInputSlider'
+                        )], id="sliderDiv")
+                ]
+            )
+        ],
+        style={ # Styling for the 3D Visiaulization Div
+            'width': '50%',
+        }),
+    ],
+    style={ #Styling for the Div that hold the two main divs (Dropdown and Times Series Divs, and the 3D Visualization Div)
+        'display': 'flex',
+        'width' : '100%',
+        'flex-direction': 'row-reverse',
+    })
 
-
+    # Call back for drawing the timeseries graphs
     @app.callback(
-        Output("graph1", "figure"), 
+        [Output("graph1", "figure"),
+        Output("graph2", "figure"),
+        Output("graph3", "figure")],
         Input("dropdown", "value"))
     def display_timeseries(pointname):
         draw_timeseries(points[pointname], pointname)
-        global figureX
-        fig = figureX
-        return fig
 
-    @app.callback(
-        Output("graph2", "figure"), 
-        Input("dropdown", "value"))
-    def display_timeseries(pointname):
-        draw_timeseries(points[pointname], pointname)
-        global figureY
-        fig = figureY
-        return fig
+        global figureX, figureY, figureZ
 
-    @app.callback(
-        Output("graph3", "figure"), 
-        Input("dropdown", "value"))
-    def display_timeseries(pointname):
-        draw_timeseries(points[pointname], pointname)
-        global figureZ
-        fig = figureZ
-        return fig
-    
+        fig_X = figureX
+        fig_Y = figureY
+        fig_Z = figureZ
+
+        return fig_X, fig_Y, fig_Z
+    # Callback for drawing the 3D Plot
     @app.callback(
         Output("graph4", "figure"), 
         Input("3dInputSlider", "value"),
